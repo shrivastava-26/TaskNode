@@ -2,6 +2,8 @@
 
 FastAPI CRUD → separate operational Postgres → Spark 3.5.5 → Parquet + separate analytics Postgres → Streamlit. Demo only: no authentication, use fake data. Existing `data/tasks.json` is preserved legacy data, unused by this app.
 
+Optional RAG, private MCP tools and a LangGraph chatbot: see [README-AI.md](README-AI.md). The base command below remains AI-independent.
+
 ```mermaid
 flowchart TD
   U[User] --> A[FastAPI CRUD]

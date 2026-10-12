@@ -1,0 +1,5 @@
+overview: "Expenses demo: FastAPI writes operational Postgres; Spark reads JDBC, converts currencies, deduplicates latest updated_at before filtering soft deletes, writes Parquet and an independent warehouse. Dashboard reads only the warehouse. Changes appear after ETL, not immediately."
+total_spend: "Total spend = SUM(amount_usd) from ai_expenses. USD conversion uses demo constants: USD=1, INR=0.012, EUR=1.08."
+transactions: "Transactions = COUNT(*) from ai_expenses. Average transaction = AVG(amount_usd). Freshness = MAX(loaded_at), in UTC."
+last_week: "Last week means the previous seven complete UTC dates: expense_date >= CURRENT_DATE - INTERVAL '7 days' AND expense_date < CURRENT_DATE."
+tools: "Query ai_expenses(expense_id, amount_usd, expense_date, loaded_at, category_name), ai_daily(expense_date, category_name, total_amount, txn_count), or ai_categories(category_key, category_name). Never query emails or descriptions. Every write requires an explicit preview and confirmation."

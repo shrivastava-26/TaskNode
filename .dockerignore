@@ -1,5 +1,7 @@
 .git
 .env
 .venv
+.venv-ai
+.pytest_cache
 **/__pycache__
 datalake

@@ -40,6 +40,8 @@ services:
       context: .
       dockerfile: Dockerfile.spark
     env_file: .env
+    environment:
+      AI_ENABLED: "false"
     volumes: ["./datalake:/workspace/datalake"]
     depends_on:
       app-db: {condition: service_healthy}

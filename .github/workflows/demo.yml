@@ -14,7 +14,23 @@ jobs:
       - run: cp .env.example .env
       - run: docker compose up --build -d --wait --wait-timeout 600
       - run: python tests/smoke.py
+      - name: Build optional AI overlay and index documents
+        run: |
+          sed -i 's/LLM_PROVIDER=groq/LLM_PROVIDER=mock/; s/AI_ALLOW_MOCK=false/AI_ALLOW_MOCK=true/' .env
+          docker compose -f docker-compose.yml -f docker-compose.ai.yml up --build -d --wait --wait-timeout 600
+      - name: Offline evals and live MCP/RAG integration
+        run: |
+          docker compose exec -T app python -m pytest evals/ -q -s
+          docker compose exec -T app python tests/ai_smoke.py
+          docker compose run --rm spark
+          docker compose exec -T warehouse-db psql -U analytics_user -d analytics -Atc "SELECT amount_usd FROM fact_expenses WHERE expense_id=(SELECT MAX(expense_id) FROM fact_expenses)" | grep -x '25.00'
+          docker compose exec -T app python compliance_report.py
+      - name: Invalid LLM key leaves base services working
+        run: |
+          LLM_PROVIDER=groq LLM_API_KEY=invalid-test-key docker compose -f docker-compose.yml -f docker-compose.ai.yml up -d --no-deps --wait app
+          docker compose exec -T app python -c "import os,httpx,uuid; r=httpx.post('http://localhost:8000/chat',headers={'X-Chat-Token':os.environ['CHAT_ACCESS_TOKEN']},json={'session_id':str(uuid.uuid4()),'message':'Explain ETL'},timeout=70); assert r.json()['route']=='offline'; assert httpx.get('http://localhost:8000/health').status_code==200; print('PASS: invalid model key fallback and CRUD health')"
+          docker compose exec -T dashboard python -c "from dashboard.app import load_data; assert load_data()[0]['txn_count']==201; print('PASS: dashboard unaffected by model outage')"
       - if: always()
         run: docker compose logs --no-color --tail=100
       - if: always()
-        run: docker compose down -v
+        run: docker compose -f docker-compose.yml -f docker-compose.ai.yml down -v

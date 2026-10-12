@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from config import app_db_url
+from app.service import save_record, delete_record
 
 CATEGORIES = ("Food", "Transport", "Shopping", "Bills", "Entertainment")
 CURRENCIES = ("USD", "INR", "EUR")
@@ -93,15 +94,7 @@ def save_expense(
         raise HTTPException(422, "Enter an email address")
     values = (user_email, category, amount, currency, description)
     with connect() as db:
-        if expense_id is None:
-            db.execute("""INSERT INTO expenses(user_email, category, amount, currency, description)
-                       VALUES (%s, %s, %s, %s, %s)""", values)
-        else:
-            updated = db.execute("""UPDATE expenses SET user_email=%s, category=%s, amount=%s,
-                currency=%s, description=%s, updated_at=clock_timestamp()
-                WHERE id=%s AND NOT is_deleted RETURNING id""", (*values, expense_id)).fetchone()
-            if updated is None:
-                raise HTTPException(404, "Expense not found")
+        save_record(db, values, expense_id)
     return RedirectResponse("/app", status_code=303)
 
 
@@ -109,8 +102,12 @@ def save_expense(
 def delete_expense(expense_id: int):
     # Keep the row so incremental ETL can observe the deletion.
     with connect() as db:
-        deleted = db.execute("""UPDATE expenses SET is_deleted=TRUE, updated_at=clock_timestamp()
-            WHERE id=%s AND NOT is_deleted RETURNING id""", (expense_id,)).fetchone()
-        if deleted is None:
-            raise HTTPException(404, "Expense not found")
+        delete_record(db, expense_id)
     return RedirectResponse("/app", status_code=303)
+
+
+# AI is optional; the base image does not import or install AI dependencies.
+import os
+if os.getenv("AI_ENABLED", "false").lower() == "true":
+    from agent.api import router as chat_router
+    app.include_router(chat_router)
