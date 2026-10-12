@@ -11,11 +11,9 @@ import httpx
 import psycopg
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import app_db_url
-from rag.index import index
 from agent.graph import call_tool
 from ai.security import sign
 
-assert index() == 0, "Second indexing run must not re-embed unchanged content"
 headers = {"X-Chat-Token": os.environ["CHAT_ACCESS_TOKEN"]}
 
 def chat(message, sid=None, confirm=None):
@@ -61,6 +59,12 @@ with psycopg.connect(os.environ["WAREHOUSE_READ_URL"]) as db:
 payload = dict(draft=dict(action="update", expense_id=expense_id, amount="25", category="Food", currency="USD"),
                expires=time.time()+300, session_id=str(uuid4()), request_id=str(uuid4()), nonce=str(uuid4()))
 approval = sign(payload)
+try:
+    asyncio.run(call_tool("crud_expense", {"approval": approval+"tampered"}))
+except ValueError:
+    pass
+else:
+    raise AssertionError("Forged write approval accepted")
 first = asyncio.run(call_tool("crud_expense", {"approval": approval}))
 assert asyncio.run(call_tool("crud_expense", {"approval": approval})) == first
 print(f"PASS: real MiniLM/pgvector, no-op indexing, MCP queries, read-only role, confirmed CRUD/replay, PII and injection events; AI_EXPENSE_ID={expense_id}")

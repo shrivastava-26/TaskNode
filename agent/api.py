@@ -88,6 +88,7 @@ async def chat(body: ChatRequest, request: Request, x_chat_token: str = Header(d
                 span.update(metadata={"route": result["route"], "tool_calls": ["query_warehouse"] if "sql" in result else ["crud_expense"] if body.confirm_token else [], "latency_ms": (time.monotonic()-start)*1000, "session_hash": digest(sid)}, output={"status": result["route"]})
                 result["trace_id"] = span.trace_id
     except HTTPException:
+        log(request_id, sid, "chat", question, status="blocked", events=("confirmation_rejected",))
         raise
     except Exception:
         result = {"route": "offline", "response": "AI features offline or request rejected. Check AI configuration and retry.", "citations": []}

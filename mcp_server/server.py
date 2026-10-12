@@ -2,7 +2,7 @@
 import json
 import os
 import time
-from uuid import UUID
+from uuid import UUID, uuid4
 import psycopg
 from psycopg.rows import dict_row
 from mcp.server.fastmcp import FastMCP
@@ -21,6 +21,7 @@ def query_warehouse(sql: str, session_id: str, request_id: str) -> dict:
     try:
         checked = safe_sql(sql)
         with psycopg.connect(os.environ["WAREHOUSE_READ_URL"], row_factory=dict_row, connect_timeout=5) as db:
+            db.isolation_level = psycopg.IsolationLevel.REPEATABLE_READ
             db.execute("SET TRANSACTION READ ONLY")
             db.execute("SET LOCAL statement_timeout='3s'")
             rows = db.execute(checked).fetchall()
@@ -34,7 +35,12 @@ def query_warehouse(sql: str, session_id: str, request_id: str) -> dict:
 @mcp.tool()
 def crud_expense(approval: str) -> dict:
     """Execute an exact server-signed, user-confirmed write. Never invent approval."""
-    payload = verify(approval)
+    start = time.monotonic()
+    try:
+        payload = verify(approval)
+    except Exception:
+        log(str(uuid4()), "unverified", "crud_expense", approval, status="blocked", events=("approval_rejected",))
+        raise ValueError("Invalid or expired approval") from None
     draft = Draft.model_validate(payload["draft"])
     with psycopg.connect(app_db_url(), row_factory=dict_row, connect_timeout=5) as db:
         # One DB transaction makes replay/crash recovery safe without double writes.
@@ -49,8 +55,8 @@ def crud_expense(approval: str) -> dict:
                                          draft.expense_id if draft.action == "update" else None)
             result = {"expense_id": expense_id, "action": draft.action}
             db.execute("UPDATE ai_write_receipts SET result=%s WHERE nonce=%s", (json.dumps(result), payload["nonce"]))
-        db.execute("INSERT INTO audit_log(request_id,session_id,user_id,action,payload_hash,latency_ms,status,citations) VALUES (%s,%s,'demo','crud_expense',%s,0,'ok',0)",
-                   (payload["request_id"], digest(payload["session_id"]), digest(payload["draft"])))
+        db.execute("INSERT INTO audit_log(request_id,session_id,user_id,action,payload_hash,latency_ms,status,citations) VALUES (%s,%s,'demo','crud_expense',%s,%s,'ok',0)",
+                   (payload["request_id"], digest(payload["session_id"]), digest(payload["draft"]), (time.monotonic()-start)*1000))
     return result
 
 if __name__ == "__main__":
