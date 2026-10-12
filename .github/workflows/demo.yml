@@ -1,0 +1,20 @@
+name: End-to-end demo
+on:
+  push:
+    branches: [data-platform-mvp]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose up --build -d --wait --wait-timeout 600
+      - run: python tests/smoke.py
+      - if: always()
+        run: docker compose logs --no-color --tail=100
+      - if: always()
+        run: docker compose down -v

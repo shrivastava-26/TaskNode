@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: tasknode-expenses
+    runtime: docker
+    repo: https://github.com/shrivastava-26/TaskNode
+    branch: data-platform-mvp
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: APP_DB_URL
+        sync: false
+  - type: web
+    name: tasknode-analytics
+    runtime: docker
+    repo: https://github.com/shrivastava-26/TaskNode
+    branch: data-platform-mvp
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerCommand: sh -c 'streamlit run dashboard/app.py --server.address=0.0.0.0 --server.port=${PORT:-8501} --server.headless=true --browser.gatherUsageStats=false'
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: WAREHOUSE_URL
+        sync: false
