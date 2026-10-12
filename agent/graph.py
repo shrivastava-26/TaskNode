@@ -42,9 +42,10 @@ async def call_tool(name, args):
             async with ClientSession(read, write) as client:
                 await client.initialize()
                 result = await client.call_tool(name, args)
-                if result.isError:
-                    raise ValueError("MCP tool rejected the operation")
-                return json.loads(result.content[0].text)
+    # Raise domain errors after the SDK's task groups have closed cleanly.
+    if result.isError:
+        raise ValueError("MCP tool rejected the operation")
+    return json.loads(result.content[0].text)
 
 async def router(state):
     plan = await generate(PLAN, json.dumps({"question": state["question"], "history": state.get("history", [])}))

@@ -24,6 +24,8 @@ MiniLM runs through FastEmbed/ONNX rather than PyTorch. The same 384-dimensional
 
 Use Docker with at least 4 GB RAM. From the repo root, copy `.env.example` to `.env` if you haven't done so. Keep `AI_ENABLED=false` there: the overlay explicitly enables AI only in the app; Spark always disables it.
 
+If you already have `.env` from the base MVP, merge the **Optional AI** variables from the new `.env.example` into it, preserving your existing database URLs. Set `WAREHOUSE_READ_URL` to the warehouse endpoint with the dedicated `chat_reader` username/password.
+
 Set `LLM_API_KEY` to your Groq key from [Groq Console](https://console.groq.com/keys). `LLM_BASE_URL` and `LLM_MODEL` configure any compatible chat-completions API supporting JSON output; changing providers requires the matching endpoint/model/key, not just a provider label. Confirm provider quotas/terms yourself; no perpetual free inference is promised.
 
 ```bash
