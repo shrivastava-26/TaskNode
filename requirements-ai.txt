@@ -1,0 +1,13 @@
+langgraph==0.6.10
+mcp==1.12.4
+sqlglot==27.14.0
+fastembed==0.7.3
+langfuse==3.8.1
+httpx==0.28.1
+pytest==8.4.2
+PyYAML==6.0.2
+starlette==0.46.2
+sse-starlette==2.3.6
+langchain-core==0.3.79
+pydantic==2.11.7
+pydantic-settings==2.10.1

@@ -1,0 +1,39 @@
+services:
+  app-db:
+    image: pgvector/pgvector:0.8.0-pg16
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.ai
+    environment:
+      AI_ENABLED: "true"
+      WAREHOUSE_READ_URL: ${WAREHOUSE_READ_URL}
+      CHAT_ACCESS_TOKEN: ${CHAT_ACCESS_TOKEN}
+      WRITE_APPROVAL_KEY: ${WRITE_APPROVAL_KEY}
+      LLM_PROVIDER: ${LLM_PROVIDER:-groq}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-20b}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
+      AI_ALLOW_MOCK: ${AI_ALLOW_MOCK:-false}
+      AI_MODEL_CACHE: /models
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}
+    volumes: ["embedding-models:/models"]
+  dashboard:
+    environment:
+      APP_API_URL: http://app:8000
+  rag-indexer:
+    build:
+      context: .
+      dockerfile: Dockerfile.ai
+    env_file: .env
+    environment:
+      AI_MODEL_CACHE: /models
+    volumes: ["embedding-models:/models"]
+    command: [sh, -c, "python -m ai.setup && python -m rag.index"]
+    depends_on:
+      app-db: {condition: service_healthy}
+      spark: {condition: service_completed_successfully}
+volumes:
+  embedding-models:

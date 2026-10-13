@@ -1,0 +1,9 @@
+FROM python:3.11.12-slim-bookworm
+WORKDIR /workspace
+ENV PYTHONUNBUFFERED=1 PYSPARK_PYTHON=/usr/local/bin/python SPARK_LOCAL_IP=127.0.0.1
+RUN apt-get update && apt-get install -y --no-install-recommends openjdk-17-jre-headless curl ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt .
+RUN sed '/^streamlit==/d; /^pandas==/d' requirements.txt > /tmp/etl.txt && pip install --no-cache-dir -r /tmp/etl.txt
+RUN mkdir /opt/jdbc && curl -fsSL https://repo.maven.apache.org/maven2/org/postgresql/postgresql/42.7.5/postgresql-42.7.5.jar -o /opt/jdbc/postgresql.jar && curl -fsSL https://repo.maven.apache.org/maven2/com/amazon/redshift/redshift-jdbc42/2.1.0.32/redshift-jdbc42-2.1.0.32.jar -o /opt/jdbc/redshift.jar
+COPY . .
+CMD ["bash", "run_pipeline.sh"]

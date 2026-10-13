@@ -1,0 +1,65 @@
+services:
+  app-db:
+    image: postgres:16.8-bookworm
+    environment:
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: app_demo_password
+      POSTGRES_DB: expenses
+    volumes: [app-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U app_user -d expenses"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  warehouse-db:
+    image: postgres:16.8-bookworm
+    environment:
+      POSTGRES_USER: analytics_user
+      POSTGRES_PASSWORD: analytics_demo_password
+      POSTGRES_DB: analytics
+    volumes: [warehouse-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U analytics_user -d analytics"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  app:
+    build: .
+    environment:
+      APP_DB_URL: ${APP_DB_URL:?Copy .env.example to .env}
+    ports: ["8000:8000"]
+    depends_on:
+      app-db: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 3s
+      timeout: 6s
+      retries: 30
+  spark:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    env_file: .env
+    environment:
+      AI_ENABLED: "false"
+    volumes: ["./datalake:/workspace/datalake"]
+    depends_on:
+      app-db: {condition: service_healthy}
+      warehouse-db: {condition: service_healthy}
+  dashboard:
+    build: .
+    environment:
+      WAREHOUSE_URL: ${WAREHOUSE_URL:?Copy .env.example to .env}
+    command: [sh, -c, "streamlit run dashboard/app.py --server.address=0.0.0.0 --server.port=$${PORT:-8501} --server.headless=true --browser.gatherUsageStats=false"]
+    ports: ["8501:8501"]
+    depends_on:
+      warehouse-db: {condition: service_healthy}
+      spark: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 3s
+      timeout: 6s
+      retries: 30
+volumes:
+  app-data:
+  warehouse-data:

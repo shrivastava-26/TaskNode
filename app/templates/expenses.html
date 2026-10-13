@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Expenses · Operational app</title>
+  <style>
+    * {box-sizing:border-box} body {font:16px system-ui,sans-serif;background:#f4f6fa;color:#203047;margin:0}
+    main {max-width:1100px;margin:40px auto;padding:0 20px} h1 {margin-bottom:8px}
+    .muted {color:#52647c} section {background:white;border:1px solid #d8e0eb;border-radius:10px;padding:24px;margin:24px 0}
+    .fields {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+    label {display:block;font-weight:600} input,select {width:100%;padding:10px;margin-top:6px;border:1px solid #a7b6ca;border-radius:5px;font:inherit}
+    button,.button {background:#235dcc;color:white;border:0;border-radius:5px;padding:10px 16px;cursor:pointer;font:inherit;display:inline-block;text-decoration:none}
+    a {color:#235dcc} .actions {margin-top:18px;display:flex;gap:16px;align-items:center}
+    .scroll {overflow-x:auto} table {width:100%;border-collapse:collapse;text-align:left}
+    th,td {padding:12px;border-bottom:1px solid #e1e7ef;vertical-align:top} th {white-space:nowrap}
+    td:last-child {white-space:nowrap} .delete {display:inline;margin-left:12px} .delete button {background:#fff;color:#a32323;border:1px solid #e2bebe;padding:6px 10px}
+  </style>
+</head>
+<body><main>
+  <h1>Expense tracker</h1>
+  <p class="muted">Operational app · Changes appear in analytics after the next Spark ETL run.</p>
+  <section>
+    <h2>{{ 'Edit expense' if expense else 'Add expense' }}</h2>
+    <form action="/app/save" method="post">
+      {% if expense %}<input type="hidden" name="expense_id" value="{{ expense.id }}">{% endif %}
+      <div class="fields">
+        <label>Email<input type="email" name="user_email" required maxlength="254" value="{{ expense.user_email if expense else 'demo@example.com' }}"></label>
+        <label>Category<select name="category">{% for c in categories %}<option {% if expense and expense.category == c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+        <label>Amount<input type="number" name="amount" min="0.01" max="9999999999.99" step="0.01" required value="{{ expense.amount if expense else '' }}"></label>
+        <label>Currency<select name="currency">{% for c in currencies %}<option {% if expense and expense.currency == c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+        <label>Description<input name="description" maxlength="500" value="{{ expense.description if expense else '' }}"></label>
+      </div>
+      <div class="actions"><button type="submit">{{ 'Save changes' if expense else 'Add expense' }}</button>{% if expense %}<a href="/app">Cancel</a>{% endif %}</div>
+    </form>
+  </section>
+  <section><h2>Expenses <small class="muted">({{ rows|length }})</small></h2><div class="scroll">
+    <table><thead><tr><th>ID</th><th>Date</th><th>Email</th><th>Category</th><th>Amount</th><th>Description</th><th>Actions</th></tr></thead>
+      <tbody>{% for row in rows %}<tr>
+        <td>{{ row.id }}</td><td>{{ row.created_at.strftime('%Y-%m-%d') }}</td><td>{{ row.user_email }}</td>
+        <td>{{ row.category }}</td><td>{{ row.amount }} {{ row.currency }}</td><td>{{ row.description }}</td>
+        <td><a href="/app?edit={{ row.id }}">Edit</a><form class="delete" action="/app/{{ row.id }}/delete" method="post"><button type="submit">Delete</button></form></td>
+      </tr>{% else %}<tr><td colspan="7">No expenses yet. Add one above or run the seed script.</td></tr>{% endfor %}</tbody>
+    </table>
+  </div></section>
+</main></body></html>
